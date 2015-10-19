@@ -145,7 +145,7 @@ function swingC(corner: number, cornerTableV: Array<Array<number>>) : number {
     }
     return corner;
   }
-  return nextC(leftC(corner, cornerTableV)));
+  return nextC(leftC(corner, cornerTableV));
 }
   
 function unswingC(corner: number, cornerTableV: Array<Array<number>>) : number {
@@ -307,10 +307,10 @@ window["onSubdivide"] = () => {
     var midPtTable = [];
     for (var ii = 0; ii < object.numElements; ii++) {
       if (oppoC(ii, cornerTableV) == -1) {
-        vertexList.push(getMidPt(vertexList[Cvertex(nextC(ii), cornerTableV)], vertexList[Cvertex(prevC(ii), cornerTableV)]);
+        vertexList.push(getMidPt(vertexList[Cvertex(nextC(ii), cornerTableV)], vertexList[Cvertex(prevC(ii), cornerTableV)]));
         midPtTable[ii] = vertexList.length - 1;
       } else if (ii < oppoC(ii, cornerTableV)) {
-        vertexList.push(getMidPt(vertexList[Cvertex(nextC(ii), cornerTableV)], vertexList[Cvertex(prevC(ii), cornerTableV)]);
+        vertexList.push(getMidPt(vertexList[Cvertex(nextC(ii), cornerTableV)], vertexList[Cvertex(prevC(ii), cornerTableV)]));
         midPtTable[oppoC(ii, cornerTableV)] = vertexList.length - 1;
         midPtTable[ii] = vertexList.length - 1;
       }
@@ -332,7 +332,7 @@ window["onSubdivide"] = () => {
       }
     }
     vertexList = tempVList;
-    numTris = object.numElements / 3;
+    var numTris = object.numElements / 3;
     for (var ii = 0; ii < numTris*3; ii+=3) {
       cornerTableV[3 * numTris + ii] = [Cvertex(ii, cornerTableV), -1];
       cornerTableV[nextC(3 * numTris + ii)] = [midPtTable[prevC(ii)], -1];
