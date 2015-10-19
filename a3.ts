@@ -62,6 +62,102 @@ var newObject = undefined;
 // the current object being displayed
 var object = undefined;
 
+function getMidPt(a: loader.Vertex, b: loader.Vertex) : loader.Vertex {
+  var res = addVertex(a, b);
+  return [res[0] / 2, res[1] / 2, res[2] / 2];
+}
+
+function crossVertex(a: loader.Vertex, b: loader.Vertex): loader.Vertex {
+  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+
+function addVertex(a: loader.Vertex, b: loader.Vertex) : loader.Vertex {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+
+function scaleVertex(s: number, a: loader.Vertex) : loader.Vertex {
+  return [a[0] * s, a[1] * s, a[2] * s];
+}
+
+function normalize(a: loader.Vertex) : loader.Vertex {
+  var norm = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+  if (norm != 0) {
+    return [a[0] / norm, a[1] / norm, a[2] / norm];
+  } else {
+    return a;
+  }
+}
+
+function vertexTo(a: loader.Vertex, b: loader.Vertex) : loader.Vertex {
+  return [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+}
+
+function constructVertexList(position: Float32Array) : Array<loader.Vertex> {
+  var res: Array<loader.Vertex> = [];
+  for (var ii = 0; ii < position.length; ii += 3) {
+    res.push([position[ii], position[ii + 1], position[ii + 2]]);
+  }
+  return res;
+}
+
+function constructOppoTable(cornerTableV: Array<Array<number>>, numTris: number) {
+  for (var ii = 0; ii < numTris * 3; ii++) {
+    for (var jj = ii + 1; jj < numTris * 3; jj++) {
+      if ((Cvertex(nextC(ii), cornerTableV) == Cvertex(prevC(jj), cornerTableV)) && (Cvertex(prevC(ii), cornerTableV) == Cvertex(nextC(jj), cornerTableV))) {
+        cornerTableV[ii][1] = jj;
+        cornerTableV[jj][1] = ii;
+      }
+    }
+  }
+}
+
+function triNum(corner: number) : number {
+  return Math.floor(corner / 3);
+}
+  
+function nextC(corner: number) : number {
+  return (3 * triNum(corner) + (corner + 1) % 3);
+}
+  
+function prevC(corner: number) : number {
+  return nextC(nextC(corner));
+}
+
+function Cvertex(corner: number, cornerTableV: Array<Array<number>>) : number {
+  return cornerTableV[corner][0];
+}
+function oppoC(corner: number, cornerTableV: Array<Array<number>>) : number {
+  return cornerTableV[corner][1];
+}
+  
+function leftC(corner: number, cornerTableV: Array<Array<number>>) : number {
+  return oppoC(nextC(corner), cornerTableV);
+}
+  
+function rightC(corner: number, cornerTableV: Array<Array<number>>) : number {
+  return oppoC(prevC(corner), cornerTableV);
+}
+  
+function swingC(corner: number, cornerTableV: Array<Array<number>>) : number {
+  if (cornerTableV[nextC(corner)][1] == -1) {
+    while (cornerTableV[prevC(corner)][1] != -1) {
+      corner = unswingC(corner, cornerTableV);
+    }
+    return corner;
+  }
+  return nextC(leftC(corner, cornerTableV)));
+}
+  
+function unswingC(corner: number, cornerTableV: Array<Array<number>>) : number {
+  if (cornerTableV[prevC(corner)][1] == -1) {
+    while (cornerTableV[nextC(corner)][1] != -1) {
+      corner = swingC(corner, cornerTableV);
+    }
+    return corner;   
+  }
+  return prevC(rightC(corner, cornerTableV));
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 // stub's for  callbacks for the model downloader. They don't do much yet
 //
@@ -79,28 +175,83 @@ var onLoad = function (mesh: loader.Mesh) {
   // - indices: 3 entries per triangle, each being an index into the vertex array. 
   var numVerts = mesh.v.length;
   var numTris = mesh.t.length;
-
+  var cornerTableV:Array<Array<number>> = [];
+  for (var ii = 0; ii < numTris; ii++) {
+    cornerTableV.push([mesh.t[ii][0], -1]);
+    cornerTableV.push([mesh.t[ii][2], -1]);
+    cornerTableV.push([mesh.t[ii][1], -1]);
+  }
+  // for (var ii = 0; ii < numTris * 3; ii++) {
+  //   for (var jj = ii + 1; jj < numTris * 3; jj++) {
+  //     if ((Cvertex(nextC(ii), cornerTableV) == Cvertex(prevC(jj), cornerTableV)) && (Cvertex(prevC(ii), cornerTableV) == Cvertex(nextC(jj), cornerTableV))) {
+  //       cornerTableV[ii][1] = jj;
+  //       cornerTableV[jj][1] = ii;
+  //     }
+  //   }
+  // }
+  constructOppoTable(cornerTableV, numTris);
   // GOAL: you need to fill in these arrays with the data for the vertices! 
   var position = [];
   var color = [];
   var normal = [];
   // this is where you put the triangle vertex list
   var indices = [];
-    
+  var prenormal: Array<Array<number>> = [];
   //////////////
   ///////// YOUR CODE HERE TO TAKE THE MESH OBJECT AND CREATE ALL THE INFORMATION NEEDED TO RENDER
   //////////////
+  var maxX = Number.NEGATIVE_INFINITY;
+  var maxY = Number.NEGATIVE_INFINITY;
+  var maxZ = Number.NEGATIVE_INFINITY;
+  var minX = Number.POSITIVE_INFINITY;
+  var minY = Number.POSITIVE_INFINITY;
+  var minZ = Number.POSITIVE_INFINITY;
+  for (var ii = 0; ii < numVerts; ii++) {
+    position.push.apply(position, mesh.v[ii]);
+    maxX = Math.max(mesh.v[ii][0], maxX);
+    maxY = Math.max(mesh.v[ii][1], maxY);
+    maxZ = Math.max(mesh.v[ii][2], maxZ);
+    minX = Math.min(mesh.v[ii][0], minX);
+    minY = Math.min(mesh.v[ii][1], minY);
+    minZ = Math.min(mesh.v[ii][2], minZ);
+    color.push(randInt(255), randInt(255), randInt(255), 255);
+    prenormal.push(undefined);
+  }
+  
+  for (var ii = 0; ii < numTris; ii++) {
+    indices.push(mesh.t[ii][0]);
+    indices.push(mesh.t[ii][1]);
+    indices.push(mesh.t[ii][2]);
+  }
+  
+  for (var ii = 0; ii < numTris * 3; ii++) {
+    if (prenormal[Cvertex(ii, cornerTableV)] == undefined) {
+      var currC = ii;
+      var nextS = swingC(ii, cornerTableV);
+      var sumOfNormal: loader.Vertex = [0,0,0];
+      do {
+        sumOfNormal = addVertex(sumOfNormal, crossVertex(mesh.v[Cvertex(nextC(nextS), cornerTableV)], mesh.v[Cvertex(nextC(currC), cornerTableV)]));
+        currC = nextS;
+        nextS = swingC(nextS, cornerTableV);
+      } while (currC != ii);
+      prenormal[Cvertex(ii, cornerTableV)] = normalize(sumOfNormal);
+    }
+  }
+  
+  for (var ii = 0; ii < numVerts; ii++) {
+    normal.push.apply(normal, prenormal[ii]);
+  }
   
   // bb1 and bb2 are the corners of the bounding box of the object.  
-  var bb1 = vec3.create();
-  var bb2 = vec3.create();
+  var bb1 = vec3.fromValues(maxX, maxY, maxZ);
+  var bb2 = vec3.fromValues(minX, minY, minZ);
   
   // Setup the new object.  you can add more data to this object if you like
   // to help with subdivision (for example)
   newObject = {
-    boundingBox: [bb1, bb2],
-    scaleFactor: 1,  // FIX!  the scale should be such that the largest view of the object is 300 units
-    center: [0, 0, 0],  // FIX!  the center of the object
+    boundingBox: [bb2, bb1],
+    scaleFactor: 300 / vec3.distance(bb2, bb1),  // FIX!  the scale should be such that the largest view of the object is 300 units
+    center: [(maxX + minX) / 2, (maxY + minY) / 2, (maxZ + minZ) / 2],  // FIX!  the center of the object
     numElements: indices.length,
     arrays: {
       position: new Float32Array(position),
@@ -143,11 +294,136 @@ window["loadModel"] = () => {
 }
  
 window["onSubdivide"] = () => {
-    console.log("Subdivide called!  You should do the subdivision!");
+  console.log("Subdivide called!  You should do the subdivision!");
+  if (object) {
+    var cornerTableV: Array<Array<number>> = [];
+    var vertexList = constructVertexList(object.arrays.position);
+    for (var ii = 0; ii < object.numElements; ii += 3) {
+      cornerTableV.push([object.arrays.indices[ii], -1]);
+      cornerTableV.push([object.arrays.indices[ii + 2], -1]);
+      cornerTableV.push([object.arrays.indices[ii + 1], -1]);
+    }
+    constructOppoTable(cornerTableV, object.numElements / 3);
+    var midPtTable = [];
+    for (var ii = 0; ii < object.numElements; ii++) {
+      if (oppoC(ii, cornerTableV) == -1) {
+        vertexList.push(getMidPt(vertexList[Cvertex(nextC(ii), cornerTableV)], vertexList[Cvertex(prevC(ii), cornerTableV)]);
+        midPtTable[ii] = vertexList.length - 1;
+      } else if (ii < oppoC(ii, cornerTableV)) {
+        vertexList.push(getMidPt(vertexList[Cvertex(nextC(ii), cornerTableV)], vertexList[Cvertex(prevC(ii), cornerTableV)]);
+        midPtTable[oppoC(ii, cornerTableV)] = vertexList.length - 1;
+        midPtTable[ii] = vertexList.length - 1;
+      }
+    }
+    var tempVList = vertexList.slice();
+    for (var ii = 0; ii < object.numElements; ii++) {
+      if ((oppoC(ii, cornerTableV) != -1) && (ii < oppoC(ii, cornerTableV))) {
+        if (oppoC(prevC(ii), cornerTableV) != -1 &&
+            oppoC(nextC(ii), cornerTableV) != -1 &&
+            oppoC(prevC(oppoC(ii, cornerTableV)), cornerTableV) != -1 &&
+            oppoC(nextC(oppoC(ii, cornerTableV)), cornerTableV) != -1) {
+          var midp1 = getMidPt(vertexList[Cvertex(leftC(ii, cornerTableV), cornerTableV)], vertexList[Cvertex(rightC(ii, cornerTableV), cornerTableV)]);
+          var midp2 = getMidPt(vertexList[Cvertex(leftC(oppoC(ii, cornerTableV), cornerTableV), cornerTableV)], vertexList[Cvertex(rightC(oppoC(ii, cornerTableV), cornerTableV), cornerTableV)]);
+          var midp3 = getMidPt(vertexList[Cvertex(ii, cornerTableV)], vertexList[Cvertex(oppoC(ii, cornerTableV), cornerTableV)]);
+          var midp4 = vertexTo(getMidPt(midp1, midp2), midp3);
+          midp4 = scaleVertex(0.25, midp4);
+          tempVList[midPtTable[ii]] = addVertex(vertexList[midPtTable[ii]], midp4);
+        }
+      }
+    }
+    vertexList = tempVList;
+    numTris = object.numElements / 3;
+    for (var ii = 0; ii < numTris*3; ii+=3) {
+      cornerTableV[3 * numTris + ii] = [Cvertex(ii, cornerTableV), -1];
+      cornerTableV[nextC(3 * numTris + ii)] = [midPtTable[prevC(ii)], -1];
+      cornerTableV[prevC(3 * numTris + ii)] = [midPtTable[nextC(ii)], -1];
+      //--------------------------------------------------------------------------------------
+      cornerTableV[6 * numTris + ii] = [Cvertex(nextC(ii), cornerTableV), -1];
+      cornerTableV[nextC(6 * numTris + ii)] = [midPtTable[ii], -1];
+      cornerTableV[prevC(6 * numTris + ii)] = [midPtTable[prevC(ii)], -1];
+      //--------------------------------------------------------------------------------------
+      cornerTableV[9 * numTris + ii] = [Cvertex(prevC(ii), cornerTableV), -1];
+      cornerTableV[nextC(9 * numTris + ii)] = [midPtTable[nextC(ii)], -1];
+      cornerTableV[prevC(9 * numTris + ii)] = [midPtTable[ii], -1];
+      //--------------------------------------------------------------------------------------
+      cornerTableV[ii] = [midPtTable[ii], -1];
+      cornerTableV[nextC(ii)] = [midPtTable[nextC(ii)], -1];
+      cornerTableV[prevC(ii)] = [midPtTable[prevC(ii)], -1];
+    }
+    numTris = numTris * 4
+    var numVerts = vertexList.length;
+    constructOppoTable(cornerTableV, numTris);
+    //----------------------------------------------------------------------------------------
+    //Construct object and array like onLoad
+    var position = [];
+    var color = [];
+    var normal = [];
+    // this is where you put the triangle vertex list
+    var indices = [];
+    var prenormal: Array<Array<number>> = [];
+    //////////////
+    ///////// YOUR CODE HERE TO TAKE THE MESH OBJECT AND CREATE ALL THE INFORMATION NEEDED TO RENDER
+    //////////////
+    var maxX = Number.NEGATIVE_INFINITY;
+    var maxY = Number.NEGATIVE_INFINITY;
+    var maxZ = Number.NEGATIVE_INFINITY;
+    var minX = Number.POSITIVE_INFINITY;
+    var minY = Number.POSITIVE_INFINITY;
+    var minZ = Number.POSITIVE_INFINITY;
+    for (var ii = 0; ii < numVerts; ii++) {
+      position.push.apply(position, vertexList[ii]);
+      maxX = Math.max(vertexList[ii][0], maxX);
+      maxY = Math.max(vertexList[ii][1], maxY);
+      maxZ = Math.max(vertexList[ii][2], maxZ);
+      minX = Math.min(vertexList[ii][0], minX);
+      minY = Math.min(vertexList[ii][1], minY);
+      minZ = Math.min(vertexList[ii][2], minZ);
+      color.push(randInt(255), randInt(255), randInt(255), 255);
+      prenormal.push(undefined);
+    }
+    for (var ii = 0; ii < numTris; ii++) {
+      indices.push(cornerTableV[3 * ii][0]);
+      indices.push(cornerTableV[3 * ii + 2][0]);
+      indices.push(cornerTableV[3 * ii + 1][0]);
+    }
     
-  //////////////
-  ///////// YOUR CODE HERE TO TAKE THE CURRENT OBJECT and SUBDIVIDE it, creating a newObject
-  //////////////
+    for (var ii = 0; ii < numTris * 3; ii++) {
+      if (prenormal[Cvertex(ii, cornerTableV)] == undefined) {
+        var currC = ii;
+        var nextS = swingC(ii, cornerTableV);
+        var sumOfNormal: loader.Vertex = [0,0,0];
+        do {
+          sumOfNormal = addVertex(sumOfNormal, crossVertex(vertexList[Cvertex(nextC(nextS), cornerTableV)], vertexList[Cvertex(nextC(currC), cornerTableV)]));
+          currC = nextS;
+          nextS = swingC(nextS, cornerTableV);
+        } while (currC != ii);
+        prenormal[Cvertex(ii, cornerTableV)] = normalize(sumOfNormal);
+      }
+    }
+    
+    for (var ii = 0; ii < numVerts; ii++) {
+      normal.push.apply(normal, prenormal[ii]);
+    }
+    
+    var bb1 = vec3.fromValues(maxX, maxY, maxZ);
+    var bb2 = vec3.fromValues(minX, minY, minZ);
+    
+    // Setup the new object.  you can add more data to this object if you like
+    // to help with subdivision (for example)
+    newObject = {
+      boundingBox: [bb2, bb1],
+      scaleFactor: 300 / vec3.distance(bb2, bb1),  // FIX!  the scale should be such that the largest view of the object is 300 units
+      center: [(maxX + minX) / 2, (maxY + minY) / 2, (maxZ + minZ) / 2],  // FIX!  the center of the object
+      numElements: indices.length,
+      arrays: {
+        position: new Float32Array(position),
+        normal: new Float32Array(normal),
+        color: new Uint8Array(color),
+        indices: new Uint16Array(indices)
+      }
+    };
+    
+  }
 } 
 
 ////////////////////////////////////////////////////////////////////////////////////////////
