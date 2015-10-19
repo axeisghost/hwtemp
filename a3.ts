@@ -674,7 +674,7 @@ function main(gl: WebGLRenderingContext, program: WebGLProgram) {
       }; 
       
       // reset the rotation matrix
-      rotationMatrix = mat4.identity(rotationMatrix);     
+      //rotationMatrix = mat4.identity(rotationMatrix);     
     }    
    
     // measure time taken for the little stats meter
@@ -784,4 +784,3 @@ function main(gl: WebGLRenderingContext, program: WebGLProgram) {
     requestAnimationFrame(drawScene);
   }
 }
-
