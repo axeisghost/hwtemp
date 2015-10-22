@@ -29,7 +29,7 @@ stats.domElement.style.right = '0px';
 stats.domElement.style.top = '0px';
 
 document.body.appendChild( stats.domElement );
-
+var defaultAlpha = 0;
 ////////////////////////////////////////////////////////////////////////////////////////////
 // utilities
 var rand = function(min: number, max?: number) {
@@ -214,7 +214,9 @@ var onLoad = function (mesh: loader.Mesh) {
     minX = Math.min(mesh.v[ii][0], minX);
     minY = Math.min(mesh.v[ii][1], minY);
     minZ = Math.min(mesh.v[ii][2], minZ);
-    color.push(randInt(255), randInt(255), randInt(255), 255);
+    var tempc = chroma.hsv(rand(360), 0.5, 1);
+    var mycolor = tempc.rgba();
+    color.push.apply(color, mycolor);
     prenormal.push(undefined);
   }
   
@@ -241,7 +243,7 @@ var onLoad = function (mesh: loader.Mesh) {
   for (var ii = 0; ii < numVerts; ii++) {
     normal.push.apply(normal, prenormal[ii]);
   }
-  
+  console.log(normal);
   // bb1 and bb2 are the corners of the bounding box of the object.  
   var bb1 = vec3.fromValues(maxX, maxY, maxZ);
   var bb2 = vec3.fromValues(minX, minY, minZ);
@@ -378,7 +380,9 @@ window["onSubdivide"] = () => {
       minX = Math.min(vertexList[ii][0], minX);
       minY = Math.min(vertexList[ii][1], minY);
       minZ = Math.min(vertexList[ii][2], minZ);
-      color.push(randInt(255), randInt(255), randInt(255), 255);
+      var tempc = chroma.hsv(rand(360), 0.5, 1);
+      var mycolor = tempc.rgba();
+      color.push.apply(color, mycolor);
       prenormal.push(undefined);
     }
     for (var ii = 0; ii < numTris; ii++) {
