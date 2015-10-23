@@ -243,7 +243,6 @@ var onLoad = function (mesh: loader.Mesh) {
   for (var ii = 0; ii < numVerts; ii++) {
     normal.push.apply(normal, prenormal[ii]);
   }
-  console.log(normal);
   // bb1 and bb2 are the corners of the bounding box of the object.  
   var bb1 = vec3.fromValues(maxX, maxY, maxZ);
   var bb2 = vec3.fromValues(minX, minY, minZ);
@@ -411,7 +410,6 @@ window["onSubdivide"] = () => {
     
     var bb1 = vec3.fromValues(maxX, maxY, maxZ);
     var bb2 = vec3.fromValues(minX, minY, minZ);
-    
     // Setup the new object.  you can add more data to this object if you like
     // to help with subdivision (for example)
     newObject = {
